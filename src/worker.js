@@ -1,7 +1,7 @@
 // 文字庫 API
 //   GET /api/presets/<代碼>  讀取單筆（公開，Notion 嵌入用）
 //   GET /api/presets         讀取全部（需查看密碼 EDIT_PASSWORD，標頭 x-password）
-//   PUT /api/presets/<代碼>  存檔（不需密碼）
+//   PUT /api/presets/<代碼>  存檔：新代碼不需密碼；覆蓋已存在的代碼需要密碼
 // 資料存在 KV 的 "presets" 這個鍵；KV 還沒有資料時，以 src/seed.json 當初始內容。
 import SEED from './seed.json';
 
@@ -84,6 +84,11 @@ export default {
       const cfg = clean(body);
       if (!cfg) return json({ error: 'bad-config' }, 400);
       const all = await readAll(env);
+      // 覆蓋已存在的代碼需要密碼；新增不用
+      if (Object.prototype.hasOwnProperty.call(all, id)) {
+        if (!env.EDIT_PASSWORD) return json({ error: 'no-password-set' }, 503);
+        if (!samePassword(request.headers.get('x-password'), env.EDIT_PASSWORD)) return json({ error: 'overwrite-needs-password' }, 401);
+      }
       all[id] = cfg;
       await env.PRESETS.put(KEY, JSON.stringify(all));
       return json({ ok: true, id, count: Object.keys(all).length });

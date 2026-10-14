@@ -403,24 +403,34 @@
     var cfg = readCfg();
     if (!serialize().trim()) { toast('沒有文字可以存檔'); return; }
     saving = true; $('save').disabled = true; setStatus('busy', '存檔中…');
-    var check = id === loadedId ? Promise.resolve(false) : fetchOne(id).then(function(r){ return r.ok; }, function(){ return false; });
-    check.then(function(exists){
-      if (exists && !confirm('代碼「' + id + '」已經存在，存檔會覆蓋原本的內容。\n已嵌入這個代碼的 Notion 頁面也會跟著改變。確定要覆蓋嗎？')) {
-        saving = false; $('save').disabled = false; updateStatus(); return;
+    var cancel = function(){ saving = false; $('save').disabled = false; updateStatus(); };
+    fetchOne(id).then(function(r){ return r.ok; }, function(){ return false; }).then(function(exists){
+      if (!exists) return doSave(id, cfg, '');
+      /* 會覆蓋既有代碼 → 需要密碼 */
+      var warn = '代碼「' + id + '」已經存在，存檔會覆蓋原本的內容，\n已嵌入這個代碼的 Notion 頁面也會跟著改變。';
+      var pw = getPw();
+      if (pw) {
+        if (!confirm(warn + '\n\n確定要覆蓋嗎？')) return cancel();
+      } else {
+        pw = prompt(warn + '\n\n覆蓋需要密碼，請輸入密碼：');
+        if (!pw) return cancel();
       }
-      return doSave(id, cfg);
+      return doSave(id, cfg, pw);
     });
   };
-  var doSave = function(id, cfg){
+  var doSave = function(id, cfg, pw){
+    var headers = { 'content-type': 'application/json' };
+    if (pw) headers['x-password'] = pw;
     return fetch('api/presets/' + encodeURIComponent(id), {
       method: 'PUT',
-      headers: { 'content-type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(cfg)
     }).then(function(r){
       return r.json().catch(function(){ return {}; }).then(function(d){ return { r: r, d: d }; });
     }).then(function(res){
       saving = false; $('save').disabled = false;
       if (res.r.ok) {
+        if (pw) setPw(pw);
         presets[id] = cfg;
         if (!Array.from($('f-load').options).some(function(o){ return o.value === id; })) {
           var o = document.createElement('option'); o.value = id; o.textContent = id; $('f-load').appendChild(o);
@@ -432,7 +442,13 @@
         return;
       }
       updateStatus();
-      if (res.d.error === 'bad-id') { alert('代碼只能使用英文小寫、數字和連字號，最長 48 字。'); }
+      if (res.d.error === 'overwrite-needs-password') {
+        setPw('');
+        var again = prompt('密碼錯誤。覆蓋代碼「' + id + '」需要密碼，請重新輸入：');
+        if (again) { saving = true; $('save').disabled = true; setStatus('busy', '存檔中…'); doSave(id, cfg, again); }
+      }
+      else if (res.d.error === 'no-password-set') { setStatus('err', '尚未設定密碼'); alert('伺服器尚未設定密碼（Cloudflare 變數 EDIT_PASSWORD），無法覆蓋既有代碼。'); }
+      else if (res.d.error === 'bad-id') { alert('代碼只能使用英文小寫、數字和連字號，最長 48 字。'); }
       else { setStatus('err', '存檔失敗'); alert('存檔失敗（' + (res.d.error || res.r.status) + '），請稍後再試。'); }
     }).catch(function(){
       saving = false; $('save').disabled = false; setStatus('err', '存檔失敗'); alert('連線失敗，請檢查網路後再試一次。');
