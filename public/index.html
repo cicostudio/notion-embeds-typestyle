@@ -50,6 +50,11 @@
   .idbar #f-id{width:170px;font-family:ui-monospace,Menlo,Consolas,monospace}
   .idbar select{flex:1;min-width:180px}
 
+  .lock{max-width:420px;margin-top:16px;padding:20px;border:1px solid var(--line);border-radius:12px;background:#fafaf8}
+  .lock-row{display:flex;gap:8px;margin-top:10px}
+  .lock-row input{flex:1;font:inherit;font-size:15px;padding:8px 10px;border:1px solid #ddd;border-radius:8px}
+  .lock-err{margin-top:8px;font-size:13px;color:#b42318;min-height:1em}
+  #relock{color:var(--muted);margin-left:6px}
   .status{font-size:13px;padding:4px 10px;border-radius:999px;white-space:nowrap}
   .status.saved{color:var(--brand);background:var(--brand-soft)}
   .status.dirty{color:#a15c00;background:#fff1dc}
@@ -100,16 +105,26 @@
 <div id="list" class="panel">
   <div class="tabs"><a href="./">編輯器</a><a href="./?list" class="on">文字庫</a></div>
   <h1>文字庫</h1>
-  <p class="note">以下是所有已存檔的文字。按「複製網址」後，在 Notion 輸入 /embed 貼上即可；按「編輯」會在編輯器中打開。剛存檔的內容最多約 1 分鐘後出現在這裡。</p>
-  <input type="text" id="search" placeholder="搜尋代碼或文字…">
-  <div id="cards"></div>
+  <form id="lock" class="lock" style="display:none">
+    <p class="note">🔒 查看所有已儲存的文字需要密碼。</p>
+    <div class="lock-row">
+      <input type="password" id="pw" placeholder="輸入密碼" autocomplete="current-password">
+      <button type="submit">查看</button>
+    </div>
+    <p class="lock-err" id="pw-err"></p>
+  </form>
+  <div id="unlocked" style="display:none">
+    <p class="note">以下是所有已存檔的文字。按「複製網址」後，在 Notion 輸入 /embed 貼上即可；按「編輯」會在編輯器中打開。剛存檔的內容最多約 1 分鐘後出現在這裡。<a href="#" id="relock">鎖定此瀏覽器</a></p>
+    <input type="text" id="search" placeholder="搜尋代碼或文字…">
+    <div id="cards"></div>
+  </div>
 </div>
 
 <!-- ===== 編輯器 ===== -->
 <div id="builder" class="panel">
   <div class="tabs"><a href="./" class="on">編輯器</a><a href="./?list">文字庫</a></div>
   <h1>置中文字編輯器</h1>
-  <a class="bigbtn" href="./?list">📚 查看所有已存檔代碼與預覽 <span id="count"></span> →</a>
+  <a class="bigbtn" href="./?list">📚 查看所有已儲存的文字 <span id="count"></span> →</a>
 
   <div class="idbar">
     <label for="f-id">代碼</label>
@@ -189,10 +204,17 @@
   var esc = function(s){ return s.replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
   var toHTML = function(raw){ return esc(raw).replace(/\*([^*\n]+)\*/g, '<span class="hl">$1</span>'); };
   var rawOf = function(t){ return Array.isArray(t) ? t.join('\n') : String(t || '').replace(/\|/g, '\n'); };
-  var loadPresets = function(){
-    var get = function(u){ return fetch(u, {cache:'no-store'}).then(function(r){ if (!r.ok) throw 0; return r.json(); }); };
-    return get('api/presets').catch(function(){ return get('presets.json'); });
+  /* 讀取：單筆公開（嵌入用）；全部需要查看密碼 */
+  var getJSON = function(u, pw){
+    return fetch(u, {cache:'no-store', headers: pw ? {'x-password': pw} : {}}).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(d){ return {ok: r.ok, status: r.status, data: d}; });
+    });
   };
+  var fetchOne = function(id){ return getJSON('api/presets/' + encodeURIComponent(id)); };
+  var fetchAll = function(pw){ return getJSON('api/presets', pw); };
+  var PW_KEY = 'nets-view-pw';
+  var getPw = function(){ try { return localStorage.getItem(PW_KEY) || ''; } catch(e){ return ''; } };
+  var setPw = function(v){ try { v ? localStorage.setItem(PW_KEY, v) : localStorage.removeItem(PW_KEY); } catch(e){} };
   var copy = function(text, btn){
     var done = function(){ var o = btn.textContent; btn.textContent = '已複製'; setTimeout(function(){ btn.textContent = o; }, 1200); };
     var fallback = function(){ var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done(); };
@@ -243,8 +265,10 @@
 
   if (q.has('id')) {
     var id = q.get('id');
-    loadPresets().then(function(p){ p[id] ? render(p[id]) : showMsg('找不到代碼「' + id + '」'); })
-      .catch(function(){ showMsg('文字庫讀取失敗'); });
+    fetchOne(id).then(function(res){
+      if (res.ok) render(res.data);
+      else showMsg(res.status === 404 ? '找不到代碼「' + id + '」' : '文字讀取失敗');
+    }).catch(function(){ showMsg('文字讀取失敗'); });
     return;
   }
   if (q.has('t')) {
@@ -256,7 +280,8 @@
   /* ---------- 文字庫 ---------- */
   if (q.has('list')) {
     $('list').style.display = 'block';
-    loadPresets().then(function(p){
+    var showList = function(p){
+      $('lock').style.display = 'none'; $('unlocked').style.display = 'block';
       var keys = Object.keys(p);
       if (!keys.length) { $('cards').innerHTML = '<p class="note">文字庫目前是空的。</p>'; return; }
       keys.forEach(function(k){
@@ -276,7 +301,20 @@
         var s = this.value.trim().toLowerCase();
         document.querySelectorAll('#cards .card').forEach(function(c){ c.style.display = !s || c.dataset.search.indexOf(s) > -1 ? '' : 'none'; });
       };
-    }).catch(function(){ $('cards').innerHTML = '<p class="note">文字庫讀取失敗。</p>'; });
+    };
+    var lockMsg = function(m){ $('lock').style.display = 'block'; $('unlocked').style.display = 'none'; $('pw-err').textContent = m || ''; $('pw').focus(); };
+    var unlock = function(pw, silent){
+      $('pw-err').textContent = silent ? '' : '確認中…';
+      fetchAll(pw).then(function(res){
+        if (res.ok) { setPw(pw); showList(res.data); return; }
+        if (res.status === 401) { setPw(''); lockMsg(silent ? '' : '密碼錯誤，請再試一次'); }
+        else if (res.status === 503) lockMsg('伺服器尚未設定密碼（Cloudflare 變數 EDIT_PASSWORD）');
+        else lockMsg('讀取失敗，請稍後再試');
+      }).catch(function(){ lockMsg('連線失敗，請檢查網路'); });
+    };
+    $('lock').onsubmit = function(e){ e.preventDefault(); var v = $('pw').value; if (v) unlock(v); };
+    $('relock').onclick = function(e){ e.preventDefault(); setPw(''); location.reload(); };
+    if (getPw()) unlock(getPw(), true); else lockMsg();
     return;
   }
 
@@ -358,50 +396,46 @@
   };
 
   /* ---------- 存檔 ---------- */
-  var PW_KEY = 'nets-edit-pw';
-  var getPw = function(){ try { return localStorage.getItem(PW_KEY) || ''; } catch(e){ return ''; } };
-  var setPw = function(v){ try { v ? localStorage.setItem(PW_KEY, v) : localStorage.removeItem(PW_KEY); } catch(e){} };
-  var askPw = function(msg){
-    var v = prompt(msg || '請輸入編輯密碼（這台瀏覽器之後會記住）');
-    if (v) setPw(v);
-    return v || '';
-  };
-
+  var saving = false;
   var save = function(){
+    if (saving) return;
     var id = cleanId();
     var cfg = readCfg();
     if (!serialize().trim()) { toast('沒有文字可以存檔'); return; }
-    if (presets[id] && id !== loadedId &&
-        !confirm('代碼「' + id + '」已經存在，存檔會覆蓋原本的內容。\n已嵌入這個代碼的 Notion 頁面也會跟著改變。確定要覆蓋嗎？')) return;
-    var pw = getPw() || askPw();
-    if (!pw) return;
-    $('save').disabled = true; setStatus('busy', '存檔中…');
-    fetch('api/presets/' + encodeURIComponent(id), {
+    saving = true; $('save').disabled = true; setStatus('busy', '存檔中…');
+    var check = id === loadedId ? Promise.resolve(false) : fetchOne(id).then(function(r){ return r.ok; }, function(){ return false; });
+    check.then(function(exists){
+      if (exists && !confirm('代碼「' + id + '」已經存在，存檔會覆蓋原本的內容。\n已嵌入這個代碼的 Notion 頁面也會跟著改變。確定要覆蓋嗎？')) {
+        saving = false; $('save').disabled = false; updateStatus(); return;
+      }
+      return doSave(id, cfg);
+    });
+  };
+  var doSave = function(id, cfg){
+    return fetch('api/presets/' + encodeURIComponent(id), {
       method: 'PUT',
-      headers: { 'content-type': 'application/json', 'x-password': pw },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify(cfg)
     }).then(function(r){
       return r.json().catch(function(){ return {}; }).then(function(d){ return { r: r, d: d }; });
     }).then(function(res){
-      $('save').disabled = false;
+      saving = false; $('save').disabled = false;
       if (res.r.ok) {
         presets[id] = cfg;
         if (!Array.from($('f-load').options).some(function(o){ return o.value === id; })) {
           var o = document.createElement('option'); o.value = id; o.textContent = id; $('f-load').appendChild(o);
         }
         $('f-id').value = id; loadedId = id; $('f-load').value = id;
-        $('count').textContent = '（' + Object.keys(presets).length + ' 筆）';
+        if (unlocked) $('count').textContent = '（' + Object.keys(presets).length + ' 筆）';
         markClean();
         toast('已存檔「' + id + '」，Notion 上的嵌入約 1 分鐘內更新');
         return;
       }
       updateStatus();
-      if (res.d.error === 'wrong-password') { setPw(''); if (askPw('密碼錯誤，請重新輸入編輯密碼')) save(); }
-      else if (res.d.error === 'no-password-set') { setStatus('err', '尚未設定編輯密碼'); alert('伺服器還沒設定編輯密碼。\n請到 Cloudflare 後台此 Worker 的「設定 → 變數和密碼」新增密碼 EDIT_PASSWORD。'); }
-      else if (res.d.error === 'bad-id') { alert('代碼只能使用英文小寫、數字和連字號，最長 48 字。'); }
+      if (res.d.error === 'bad-id') { alert('代碼只能使用英文小寫、數字和連字號，最長 48 字。'); }
       else { setStatus('err', '存檔失敗'); alert('存檔失敗（' + (res.d.error || res.r.status) + '），請稍後再試。'); }
     }).catch(function(){
-      $('save').disabled = false; setStatus('err', '存檔失敗'); alert('連線失敗，請檢查網路後再試一次。');
+      saving = false; $('save').disabled = false; setStatus('err', '存檔失敗'); alert('連線失敗，請檢查網路後再試一次。');
     });
   };
   $('save').onclick = save;
@@ -509,19 +543,46 @@
   (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(refresh);
 
   var prevLoad = '';
-  loadPresets().then(function(p){
-    presets = p;
+  var unlocked = false;
+  var addOption = function(k){
+    if (Array.from($('f-load').options).some(function(o){ return o.value === k; })) return;
+    var o = document.createElement('option'); o.value = k; o.textContent = k; $('f-load').appendChild(o);
+  };
+  var populate = function(p){
+    unlocked = true; presets = p;
+    var lockOpt = $('f-load').querySelector('option[value="__unlock"]'); if (lockOpt) lockOpt.remove();
+    $('f-load').options[0].textContent = '從文字庫載入…';
     $('count').textContent = '（' + Object.keys(p).length + ' 筆）';
-    Object.keys(p).forEach(function(k){ var o = document.createElement('option'); o.value = k; o.textContent = k; $('f-load').appendChild(o); });
-    $('f-load').onchange = function(){
-      var v = this.value;
-      if (!presets[v]) return;
-      if (!confirmLeave()) { this.value = prevLoad; return; }
-      prevLoad = v; fill(v, presets[v]);
-    };
-    var e = q.get('edit');
-    if (e && p[e]) { $('f-load').value = e; prevLoad = e; fill(e, p[e]); }
-  }).catch(function(){ setStatus('err', '文字庫讀取失敗'); });
+    Object.keys(p).forEach(addOption);
+    if (loadedId) $('f-load').value = loadedId;
+  };
+  var showLockOption = function(){
+    var o = document.createElement('option'); o.value = '__unlock'; o.textContent = '🔒 輸入密碼以載入文字庫…'; $('f-load').appendChild(o);
+  };
+  $('f-load').onchange = function(){
+    var v = this.value, sel = this;
+    if (v === '__unlock') {
+      sel.value = prevLoad;
+      var pw = prompt('請輸入密碼以查看文字庫');
+      if (!pw) return;
+      fetchAll(pw).then(function(res){
+        if (res.ok) { setPw(pw); populate(res.data); toast('文字庫已載入'); }
+        else alert(res.status === 401 ? '密碼錯誤' : res.status === 503 ? '伺服器尚未設定密碼' : '讀取失敗');
+      });
+      return;
+    }
+    if (!presets[v]) return;
+    if (!confirmLeave()) { sel.value = prevLoad; return; }
+    prevLoad = v; fill(v, presets[v]);
+  };
+  if (getPw()) {
+    fetchAll(getPw()).then(function(res){ if (res.ok) populate(res.data); else { setPw(''); showLockOption(); } }, showLockOption);
+  } else showLockOption();
+  var e = q.get('edit');
+  if (e) fetchOne(e).then(function(res){
+    if (res.ok) { presets[e] = res.data; addOption(e); $('f-load').value = e; prevLoad = e; fill(e, res.data); }
+    else setStatus('err', '找不到代碼「' + e + '」');
+  });
 })();
 </script>
 </body>
