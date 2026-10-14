@@ -28,8 +28,51 @@ function samePassword(a, b) {
 }
 
 const HEX = /^[0-9a-fA-F]{3,8}$/;
+const num = (v, lo, hi) => (Number.isFinite(+v) && +v >= lo && +v <= hi ? +v : undefined);
+const str = (v, max) => (typeof v === 'string' && v.trim() ? v.slice(0, max) : undefined);
+const pick = (v, list) => (list.includes(v) ? v : undefined);
+const EVENT = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
+
+function safeHref(v) {
+  if (typeof v !== 'string') return undefined;
+  const h = v.trim();
+  if (h.length > 2000) return undefined;
+  return /^(https?:\/\/|tel:|mailto:)/i.test(h) ? h : undefined;
+}
+
+// 按鈕設定
+function cleanButton(cfg) {
+  const label = str(cfg.label, 80);
+  const href = safeHref(cfg.href);
+  if (!label || !href) return null;
+  const out = {
+    kind: 'button', label, href,
+    sub: str(cfg.sub, 120),
+    done: str(cfg.done, 40),
+    target: pick(cfg.target, ['_top']),
+    variant: pick(cfg.variant, ['outline', 'soft']),
+    effect: pick(cfg.effect, ['glow', 'pulse', 'shake', 'shine', 'bounce']),
+    r: num(cfg.r, 0, 999),
+    fs: num(cfg.fs, 10, 40),
+    w: num(cfg.w, 100, 900),
+    full: cfg.full === true ? true : undefined,
+    a: pick(cfg.a, ['left', 'right']),
+    utm: cfg.utm === true ? true : undefined,
+    camp: typeof cfg.camp === 'string' && /^[A-Za-z0-9_.-]{1,60}$/.test(cfg.camp) ? cfg.camp : undefined,
+    trk: cfg.trk === true ? true : undefined,
+    ev: EVENT.test(cfg.ev || '') ? cfg.ev : undefined,
+    mev: EVENT.test(cfg.mev || '') ? cfg.mev : undefined,
+    lev: EVENT.test(cfg.lev || '') ? cfg.lev : undefined,
+  };
+  if (HEX.test(cfg.bg)) out.bg = cfg.bg;
+  if (HEX.test(cfg.fg)) out.fg = cfg.fg;
+  Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
+  return out;
+}
+
 function clean(cfg) {
   if (!cfg || typeof cfg !== 'object') return null;
+  if (cfg.kind === 'button') return cleanButton(cfg);
   const t = Array.isArray(cfg.t) ? cfg.t.map(String) : String(cfg.t ?? '');
   const text = Array.isArray(t) ? t.join('\n') : t;
   if (!text.trim() || text.length > 2000) return null;
@@ -37,7 +80,6 @@ function clean(cfg) {
   if (HEX.test(cfg.c)) out.c = cfg.c;
   if (HEX.test(cfg.hc)) out.hc = cfg.hc;
   if (HEX.test(cfg.bg)) out.bg = cfg.bg;
-  const num = (v, lo, hi) => (Number.isFinite(+v) && +v >= lo && +v <= hi ? +v : undefined);
   out.s = num(cfg.s, 6, 240);
   out.w = num(cfg.w, 100, 900);
   out.lh = num(cfg.lh, 0.5, 4);
@@ -46,6 +88,15 @@ function clean(cfg) {
   if (cfg.a === 'left' || cfg.a === 'right') out.a = cfg.a;
   Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
   return out;
+}
+
+// 追蹤 ID：在 Cloudflare「設定 → 變數和密碼」以一般變數設定 GA4_ID / META_PIXEL_ID / LINE_TAG_ID
+function trackingIds(env) {
+  const t = {};
+  if (/^G-[A-Z0-9]{4,20}$/.test(env.GA4_ID || '')) t.ga = env.GA4_ID;
+  if (/^[0-9]{6,20}$/.test(env.META_PIXEL_ID || '')) t.meta = env.META_PIXEL_ID;
+  if (/^[0-9a-f-]{8,64}$/i.test(env.LINE_TAG_ID || '')) t.line = env.LINE_TAG_ID;
+  return t;
 }
 
 export default {
@@ -62,12 +113,16 @@ export default {
         : json({ error: 'wrong-password' }, 401);
     }
 
+    if (parts[2] === 'config' && request.method === 'GET') return json({ track: trackingIds(env) });
+
     if (parts[2] !== 'presets') return json({ error: 'not-found' }, 404);
 
     if (request.method === 'GET' && parts[3]) {
       const all = await readAll(env);
       const id = decodeURIComponent(parts[3]);
-      return Object.prototype.hasOwnProperty.call(all, id) ? json(all[id]) : json({ error: 'not-found' }, 404);
+      if (!Object.prototype.hasOwnProperty.call(all, id)) return json({ error: 'not-found' }, 404);
+      const item = all[id];
+      return json(item.kind === 'button' && item.trk ? { ...item, _track: trackingIds(env) } : item);
     }
 
     if (request.method === 'GET') {

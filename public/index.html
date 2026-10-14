@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>置中文字嵌入</title>
+<title>Notion 嵌入小工具</title>
 <style>
   :root{
     --font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
@@ -93,6 +93,64 @@
   .outputs .url input{flex:1;font-size:12px;background:#f7f7f5}
   .outputs .actions{margin-top:8px;display:flex;gap:8px}
   .tip{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.6}
+
+  /* ===== 按鈕（嵌入與預覽共用） ===== */
+  .bwrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 20px;width:100%}
+  .bwrap.al-left{align-items:flex-start} .bwrap.al-right{align-items:flex-end}
+  .cbtn{--bg:#2f6b55;--fg:#fff;--r:999px;--fs:17px;--fw:700;position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:.4em;padding:.85em 1.9em;font-family:var(--font);font-size:var(--fs);font-weight:var(--fw);line-height:1.2;letter-spacing:.03em;text-decoration:none;color:var(--fg);background:var(--bg);border:2px solid var(--bg);border-radius:var(--r);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s ease,box-shadow .2s ease,filter .2s ease;user-select:none;-webkit-user-select:none;white-space:nowrap;max-width:100%}
+  .cbtn.v-outline{background:transparent;color:var(--bg)}
+  .cbtn.v-soft{background:color-mix(in srgb,var(--bg) 14%,#fff);border-color:transparent;color:var(--bg)}
+  .cbtn.full{width:100%}
+  @media (hover:hover){.cbtn:hover{transform:translateY(-2px);filter:brightness(1.07);box-shadow:0 8px 18px color-mix(in srgb,var(--bg) 32%,transparent)}}
+  .cbtn:active,.cbtn.pressed{transform:scale(.95)!important;animation:none!important}
+  .cbtn .lbl{position:relative;z-index:1}
+  .bsub{font-size:12.5px;color:#777;font-family:var(--font)}
+  .fx-glow{animation:fx-glow 2s ease-out infinite}
+  @keyframes fx-glow{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bg) 55%,transparent)}70%,100%{box-shadow:0 0 0 14px color-mix(in srgb,var(--bg) 0%,transparent)}}
+  .fx-pulse{animation:fx-pulse 1.6s ease-in-out infinite}
+  @keyframes fx-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  .fx-shake{animation:fx-shake 3s ease-in-out infinite}
+  @keyframes fx-shake{0%,80%,100%{transform:rotate(0)}83%{transform:rotate(-4deg)}86%{transform:rotate(4deg)}89%{transform:rotate(-3deg)}92%{transform:rotate(2deg)}95%{transform:rotate(-1deg)}}
+  .fx-bounce{animation:fx-bounce 2.2s ease infinite}
+  @keyframes fx-bounce{0%,58%,100%{transform:translateY(0)}68%{transform:translateY(-7px)}78%{transform:translateY(0)}86%{transform:translateY(-3px)}}
+  .fx-shine::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:fx-shine 2.8s ease-in-out infinite;pointer-events:none}
+  @keyframes fx-shine{0%,55%{left:-60%}100%{left:130%}}
+  .cbtn.clicked{animation:none!important}
+  .cbtn.clicked::after{display:none}
+  .ripple{position:absolute;border-radius:50%;background:currentColor;opacity:.32;transform:scale(0);animation:ripple .6s ease-out forwards;pointer-events:none}
+  @keyframes ripple{to{transform:scale(1);opacity:0}}
+  .cbtn .ok{display:inline-block;animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+  @media (prefers-reduced-motion:reduce){.fx-glow,.fx-pulse,.fx-shake,.fx-bounce,.fx-shine::after{animation:none}}
+
+  /* ===== 編輯器：類型切換與按鈕表單 ===== */
+  .kindbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .seg{display:inline-flex;border:1px solid #ddd;border-radius:10px;overflow:hidden;background:#fff}
+  .seg button{background:#fff;color:#444;border-radius:0;padding:7px 14px;font-size:14px;border-right:1px solid #eee}
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:var(--brand);color:#fff}
+  .seg.sm button{padding:5px 10px;font-size:13px}
+  .stage-wrap.solo{border-top:1px solid var(--line);border-radius:12px}
+  #btnhost{width:100%;display:flex;justify-content:center}
+  .bform{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+  .bform fieldset{border:1px solid var(--line);border-radius:12px;padding:14px 14px 10px;min-width:0}
+  .bform fieldset.wide{grid-column:1/-1}
+  .bform legend{font-size:13px;font-weight:600;color:#444;padding:0 6px}
+  .frow{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;margin-bottom:10px}
+  .frow > label{font-size:13px;color:#555}
+  .frow input[type=text],.frow select{width:100%}
+  .frow input[type=color]{width:36px;height:32px;border:1px solid #ddd;border-radius:6px;padding:0;background:none;cursor:pointer;vertical-align:middle}
+  .frow input[type=range]{width:100%;accent-color:var(--brand)}
+  .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .check{display:flex;gap:8px;align-items:center;font-size:14px;color:#333;margin-bottom:10px;cursor:pointer}
+  .check input{width:16px;height:16px;accent-color:var(--brand)}
+  .trk-status{font-size:12px;line-height:1.8;color:#555;background:#f7f7f5;border-radius:8px;padding:8px 10px;margin-bottom:10px}
+  .trk-status b{font-weight:600}
+  .trk-status .on{color:var(--brand)} .trk-status .off{color:#b0b0aa}
+  .sub-fields{padding-left:24px}
+  .sub-fields[hidden]{display:none}
+  .badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--brand-soft);color:var(--brand);margin-left:6px;font-family:var(--font);vertical-align:1px}
+  @media (max-width:640px){.bform{grid-template-columns:1fr}.frow{grid-template-columns:84px 1fr}}
   @media (max-width:640px){.outputs{grid-template-columns:1fr}.tb-group{border-right:0;padding:0 2px}}
 </style>
 </head>
@@ -123,8 +181,8 @@
 <!-- ===== 編輯器 ===== -->
 <div id="builder" class="panel">
   <div class="tabs"><a href="./" class="on">編輯器</a><a href="./?list">文字庫</a></div>
-  <h1>置中文字編輯器</h1>
-  <a class="bigbtn" href="./?list">📚 查看所有已儲存的文字 <span id="count"></span> →</a>
+  <h1>Notion 嵌入小工具</h1>
+  <a class="bigbtn" href="./?list">📚 查看所有已儲存的內容 <span id="count"></span> →</a>
 
   <div class="idbar">
     <label for="f-id">代碼</label>
@@ -132,6 +190,18 @@
     <select id="f-load"><option value="">從文字庫載入…</option></select>
     <span id="status" class="status saved">已存檔</span>
     <button id="save" title="存檔（Ctrl/⌘ + S）">💾 存檔</button>
+  </div>
+
+  <div class="kindbar">
+    <div class="seg" id="kindseg">
+      <button data-kind="text" class="on">Aa 置中文字</button>
+      <button data-kind="button">▶ 按鈕</button>
+    </div>
+    <div class="seg sm" id="widthseg">
+      <button data-w="720" class="on" title="桌機">💻 桌機</button>
+      <button data-w="390" title="手機 390px">📱 手機</button>
+      <button data-w="320" title="小手機 320px">📱 小</button>
+    </div>
   </div>
 
   <div class="toolbar" id="toolbar">
@@ -161,21 +231,73 @@
       <span>背景</span>
       <select id="f-bg"><option value="">透明</option><option value="ffffff">白</option><option value="e8f0ec">淺綠</option><option value="f7f6f3">米白</option></select>
     </div>
-    <div class="tb-group">
-      <button class="tb-btn on" data-w="720" title="桌機">💻</button>
-      <button class="tb-btn" data-w="390" title="手機 390px">📱</button>
-      <button class="tb-btn" data-w="320" title="小手機 320px">📱<small>S</small></button>
-    </div>
   </div>
 
-  <div class="stage-wrap">
+  <div class="stage-wrap" id="stagewrap">
     <div class="stage" id="stage" style="width:720px;height:220px">
       <div id="editor" class="txt" contenteditable="true" spellcheck="false"></div>
+      <div id="btnhost" style="display:none"></div>
       <div class="stage-handle" id="handle" title="拖曳調整嵌入框高度"></div>
     </div>
     <div class="stage-info" id="info"></div>
   </div>
-  <p class="tip">直接在框裡打字，Enter 換行。選取文字後按「強調」套用強調色，再按一次取消。拖曳框的下緣可以模擬 Notion 嵌入框高度，字級會自動縮放，和實際嵌入後一樣。</p>
+  <p class="tip" id="tip-text">直接在框裡打字，Enter 換行。選取文字後按「強調」套用強調色，再按一次取消。拖曳框的下緣可以模擬 Notion 嵌入框高度，字級會自動縮放，和實際嵌入後一樣。</p>
+  <p class="tip" id="tip-btn" hidden>上方是實際效果，可以直接點按看看點擊回饋（預覽中不會真的開啟連結）。拖曳框的下緣模擬 Notion 嵌入框高度。</p>
+
+  <div class="bform" id="bform" hidden>
+    <fieldset>
+      <legend>內容</legend>
+      <div class="frow"><label for="b-label">按鈕文字</label><input type="text" id="b-label" value="首次預約體驗 ➜" maxlength="80"></div>
+      <div class="frow"><label for="b-sub">按鈕下方小字</label><input type="text" id="b-sub" placeholder="選填，例如：限時優惠至 10/31" maxlength="120"></div>
+      <div class="frow"><label for="b-href">連結網址</label><input type="text" id="b-href" placeholder="https://… 或 tel:…"></div>
+      <div class="frow"><label for="b-target">開啟方式</label>
+        <select id="b-target"><option value="">新分頁（建議）</option><option value="_top">同一分頁</option></select></div>
+      <div class="frow"><label for="b-done">點擊後文字</label><input type="text" id="b-done" placeholder="已開啟" maxlength="40"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>外觀</legend>
+      <div class="frow"><label>顏色</label>
+        <div class="inline"><input type="color" id="b-bg" value="#2f6b55" title="按鈕色"><span class="tip" style="margin:0">按鈕</span>
+          <input type="color" id="b-fg" value="#ffffff" title="文字色"><span class="tip" style="margin:0">文字</span></div></div>
+      <div class="frow"><label>樣式</label>
+        <div class="seg sm" id="b-variant"><button data-v="" class="on">實心</button><button data-v="outline">外框</button><button data-v="soft">淡色</button></div></div>
+      <div class="frow"><label for="b-r">圓角</label>
+        <select id="b-r"><option value="999">膠囊</option><option value="16">大圓角</option><option value="8">小圓角</option><option value="0">直角</option></select></div>
+      <div class="frow"><label for="b-fs">字級</label><div class="inline" style="flex-wrap:nowrap"><input type="range" id="b-fs" min="12" max="30" value="17"><output id="o-bfs" class="tip" style="margin:0;min-width:36px">17px</output></div></div>
+      <div class="frow"><label for="b-w">字重</label>
+        <select id="b-w"><option value="500">中</option><option value="700" selected>粗</option><option value="900">特粗</option></select></div>
+      <div class="frow"><label>位置</label>
+        <div class="seg sm" id="b-align"><button data-a="left">靠左</button><button data-a="" class="on">置中</button><button data-a="right">靠右</button></div></div>
+      <label class="check"><input type="checkbox" id="b-full"> 滿版寬度</label>
+    </fieldset>
+
+    <fieldset class="wide">
+      <legend>引導效果（吸引點按）</legend>
+      <div class="seg" id="b-effect" style="flex-wrap:wrap">
+        <button data-fx="">無</button><button data-fx="glow" class="on">✨ 光暈</button><button data-fx="pulse">🔍 放大</button><button data-fx="shake">👋 搖晃</button><button data-fx="shine">💡 閃光</button><button data-fx="bounce">⬆ 彈跳</button>
+      </div>
+      <p class="tip">所有按鈕都有點擊回饋：按下縮小、漣漪擴散、文字變成「✓ 點擊後文字」約 2 秒。系統設定為「減少動態效果」的訪客，會自動關閉引導效果。</p>
+    </fieldset>
+
+    <fieldset class="wide">
+      <legend>追蹤</legend>
+      <label class="check"><input type="checkbox" id="b-utm" checked> 連結自動加上 UTM（讓目的頁知道點擊來自哪顆按鈕）</label>
+      <div class="sub-fields" id="utm-fields">
+        <div class="frow"><label for="b-camp">活動名稱</label><input type="text" id="b-camp" placeholder="例如 2026-oct-promo（英數字、- _ .）"></div>
+        <p class="tip" id="utm-preview" style="word-break:break-all;margin-bottom:10px"></p>
+      </div>
+      <label class="check"><input type="checkbox" id="b-trk"> 點擊時送出追蹤事件（GA4 / Meta Pixel / LINE Tag）</label>
+      <div class="sub-fields" id="trk-fields" hidden>
+        <div class="trk-status" id="trk-status">讀取追蹤設定中…</div>
+        <div class="frow"><label for="b-ev">GA4 事件</label><input type="text" id="b-ev" placeholder="cta_click"></div>
+        <div class="frow"><label for="b-mev">Meta 事件</label>
+          <select id="b-mev"><option value="Lead">Lead（潛在顧客）</option><option value="Contact">Contact（聯絡）</option><option value="Schedule">Schedule（預約）</option><option value="ButtonClick">ButtonClick（自訂）</option></select></div>
+        <div class="frow"><label for="b-lev">LINE 事件</label><input type="text" id="b-lev" placeholder="Conversion"></div>
+        <p class="tip">事件會帶上按鈕代碼（button_id／content_name），可以在報表中分辨是哪一顆按鈕。追蹤碼只在嵌入頁實際被點擊時送出，編輯器預覽中不會送出。</p>
+      </div>
+    </fieldset>
+  </div>
 
   <h2>嵌入網址</h2>
   <div class="outputs" style="grid-template-columns:1fr">
@@ -246,8 +368,103 @@
   };
   var justify = function(a){ return a === 'left' ? 'flex-start' : a === 'right' ? 'flex-end' : 'center'; };
 
+  /* ---------- 按鈕 ---------- */
+  var withUtm = function(href, cfg, id){
+    if (!cfg.utm || !/^https?:\/\//i.test(href || '')) return href;
+    try {
+      var u = new URL(href);
+      var set = function(k, v){ if (!u.searchParams.has(k)) u.searchParams.set(k, v); };
+      set('utm_source', 'notion'); set('utm_medium', 'embed_button');
+      set('utm_campaign', cfg.camp || 'notion_page'); set('utm_content', id || 'button');
+      return u.toString();
+    } catch (e) { return href; }
+  };
+  var META_STD = ['Lead','Contact','Schedule','ViewContent','CompleteRegistration','SubmitApplication','FindLocation'];
+  var trackersReady = false;
+  var initTrackers = function(t){
+    if (trackersReady || !t) return; trackersReady = true;
+    if (t.ga) {
+      var g = document.createElement('script'); g.async = true; g.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(t.ga); document.head.appendChild(g);
+      window.dataLayer = window.dataLayer || []; window.gtag = function(){ window.dataLayer.push(arguments); };
+      window.gtag('js', new Date()); window.gtag('config', t.ga, { send_page_view: false });
+    }
+    if (t.meta) {
+      !function(f,b,e,v,n,t2,s2){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t2=b.createElement(e);t2.async=!0;t2.src=v;s2=b.getElementsByTagName(e)[0];s2.parentNode.insertBefore(t2,s2)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      window.fbq('init', t.meta);
+    }
+    if (t.line) {
+      window._ltq = window._ltq || []; window._lt = window._lt || function(){ window._ltq.push(arguments); };
+      var l = document.createElement('script'); l.async = true; l.src = 'https://d.line-scdn.net/n/line_tag/public/release/v1/lt.js'; document.head.appendChild(l);
+      window._lt('init', { customerType: 'lap', tagId: t.line });
+    }
+  };
+  var fireTrack = function(t, cfg, id, href){
+    if (!t) return;
+    try { if (t.ga && window.gtag) window.gtag('event', cfg.ev || 'cta_click', { button_id: id, button_label: cfg.label, link_url: href, page_referrer: document.referrer || undefined, transport_type: 'beacon' }); } catch (e) {}
+    try { if (t.meta && window.fbq) { var mev = cfg.mev || 'Lead', p = { content_name: id }; META_STD.indexOf(mev) > -1 ? window.fbq('track', mev, p) : window.fbq('trackCustom', mev, p); } } catch (e) {}
+    try { if (t.line && window._lt) window._lt('send', 'cv', { type: cfg.lev || 'Conversion' }, [t.line]); } catch (e) {}
+  };
+
+  /* host 內畫出按鈕；opts.preview = 編輯器預覽（不開連結、不送追蹤） */
+  var renderBtn = function(host, cfg, opts){
+    opts = opts || {};
+    var id = opts.id || 'button';
+    var href = withUtm(cfg.href || '#', cfg, id);
+    var wrap = document.createElement('div');
+    wrap.className = 'bwrap' + (cfg.a ? ' al-' + cfg.a : '');
+    var a = document.createElement('a');
+    a.className = 'cbtn' + (cfg.variant ? ' v-' + cfg.variant : '') + (cfg.effect ? ' fx-' + cfg.effect : '') + (cfg.full ? ' full' : '');
+    a.href = href;
+    a.target = cfg.target === '_top' ? '_top' : '_blank';
+    a.rel = 'noopener';
+    a.style.setProperty('--bg', hex(cfg.bg, '#2f6b55'));
+    a.style.setProperty('--fg', hex(cfg.fg, '#ffffff'));
+    a.style.setProperty('--r', (cfg.r === undefined ? 999 : cfg.r) + 'px');
+    a.style.setProperty('--fs', (cfg.fs || 17) + 'px');
+    a.style.setProperty('--fw', cfg.w || 700);
+    var lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = cfg.label || '按鈕';
+    a.appendChild(lbl);
+    wrap.appendChild(a);
+    if (cfg.sub) { var sub = document.createElement('div'); sub.className = 'bsub'; sub.textContent = cfg.sub; wrap.appendChild(sub); }
+    host.innerHTML = ''; host.appendChild(wrap);
+
+    var timer, lastFire = 0;
+    var press = function(){ a.classList.add('pressed'); };
+    var release = function(){ a.classList.remove('pressed'); };
+    a.addEventListener('pointerdown', press);
+    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ a.addEventListener(ev, release); });
+    a.addEventListener('click', function(e){
+      var r = a.getBoundingClientRect(), size = Math.max(r.width, r.height) * 2.2;
+      var x = (e.clientX || r.left + r.width / 2) - r.left, y = (e.clientY || r.top + r.height / 2) - r.top;
+      var rp = document.createElement('span'); rp.className = 'ripple';
+      rp.style.width = rp.style.height = size + 'px'; rp.style.left = (x - size / 2) + 'px'; rp.style.top = (y - size / 2) + 'px';
+      a.appendChild(rp); setTimeout(function(){ rp.remove(); }, 650);
+      a.classList.add('clicked');
+      lbl.innerHTML = '<span class="ok">✓</span> ' + esc(cfg.done || '已開啟');
+      clearTimeout(timer);
+      timer = setTimeout(function(){ a.classList.remove('clicked'); lbl.textContent = cfg.label || '按鈕'; }, 2000);
+      if (opts.preview) { e.preventDefault(); if (opts.onPreviewClick) opts.onPreviewClick(href); return; }
+      var now = Date.now();
+      if (cfg.trk && now - lastFire > 800) { lastFire = now; fireTrack(opts.track, cfg, id, href); }
+      if (a.target === '_top') {
+        e.preventDefault();
+        setTimeout(function(){
+          try { window.top.location.href = href; } catch (err) { window.open(href, '_blank', 'noopener'); }
+        }, cfg.trk ? 250 : 0);
+      }
+    });
+    return wrap;
+  };
+
   /* ---------- 嵌入顯示 ---------- */
-  var render = function(cfg){
+  var render = function(cfg, id){
+    if (cfg.kind === 'button') {
+      var v = $('view'); v.style.display = 'flex'; v.style.justifyContent = 'center';
+      var tr = cfg._track && Object.keys(cfg._track).length ? cfg._track : null;
+      if (cfg.trk && tr) initTrackers(tr);
+      renderBtn(v, cfg, { id: id, track: tr });
+      return;
+    }
     var view = $('view'), el = $('text');
     el.innerHTML = toHTML(rawOf(cfg.t));
     applyStyle(el, cfg);
@@ -266,7 +483,7 @@
   if (q.has('id')) {
     var id = q.get('id');
     fetchOne(id).then(function(res){
-      if (res.ok) render(res.data);
+      if (res.ok) render(res.data, id);
       else showMsg(res.status === 404 ? '找不到代碼「' + id + '」' : '文字讀取失敗');
     }).catch(function(){ showMsg('文字讀取失敗'); });
     return;
@@ -286,11 +503,13 @@
       if (!keys.length) { $('cards').innerHTML = '<p class="note">文字庫目前是空的。</p>'; return; }
       keys.forEach(function(k){
         var url = base + '?id=' + encodeURIComponent(k);
-        var plain = rawOf(p[k].t).split('\n').filter(Boolean).join(' ／ ').replace(/\*/g, '');
+        var isBtn = p[k].kind === 'button';
+        var plain = isBtn ? (p[k].label + ' → ' + p[k].href) : rawOf(p[k].t).split('\n').filter(Boolean).join(' ／ ').replace(/\*/g, '');
         var card = document.createElement('div'); card.className = 'card';
         card.innerHTML = '<iframe loading="lazy"></iframe><div class="meta"><div class="info"><b></b><small></small></div><button class="ghost" data-act="edit">編輯</button><button data-act="copy">複製網址</button></div>';
         card.querySelector('iframe').src = url;
         card.querySelector('b').textContent = k;
+        if (isBtn) { card.querySelector('iframe').style.height = '120px'; var bd = document.createElement('span'); bd.className = 'badge'; bd.textContent = '按鈕'; card.querySelector('b').after(bd); }
         card.querySelector('small').textContent = plain;
         card.dataset.search = (k + ' ' + plain).toLowerCase();
         card.querySelector('[data-act=copy]').onclick = function(){ copy(url, this); };
@@ -321,7 +540,7 @@
   /* ---------- 所見即所得編輯器 ---------- */
   $('builder').style.display = 'block';
   var ed = $('editor'), stage = $('stage');
-  var state = { a:'center', w:720, h:220 };
+  var state = { a:'center', w:720, h:220, kind:'text', hText:220, hBtn:130, bv:'', ba:'', bfx:'glow' };
   var PAD = 8;
 
   /* 編輯區 DOM → 純文字（含 *強調* 標記） */
@@ -346,7 +565,29 @@
     if (/\n$/.test(raw)) ed.innerHTML += '<br>';
   };
 
-  var readCfg = function(){
+  var readCfg = function(){ return state.kind === 'button' ? readBtn() : readText(); };
+  var readBtn = function(){
+    var v = function(id){ return $(id).value.trim(); };
+    var cfg = { kind: 'button', label: v('b-label'), href: v('b-href') };
+    if (v('b-sub')) cfg.sub = v('b-sub');
+    if (v('b-done')) cfg.done = v('b-done');
+    if ($('b-target').value) cfg.target = $('b-target').value;
+    cfg.bg = $('b-bg').value.slice(1); cfg.fg = $('b-fg').value.slice(1);
+    if (state.bv) cfg.variant = state.bv;
+    cfg.r = Number($('b-r').value); cfg.fs = Number($('b-fs').value); cfg.w = Number($('b-w').value);
+    if ($('b-full').checked) cfg.full = true;
+    if (state.ba) cfg.a = state.ba;
+    if (state.bfx) cfg.effect = state.bfx;
+    if ($('b-utm').checked) { cfg.utm = true; var c = v('b-camp').replace(/[^A-Za-z0-9_.-]+/g, '-').slice(0, 60); if (c) cfg.camp = c; }
+    if ($('b-trk').checked) {
+      cfg.trk = true;
+      if (/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(v('b-ev'))) cfg.ev = v('b-ev');
+      cfg.mev = $('b-mev').value;
+      if (/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(v('b-lev'))) cfg.lev = v('b-lev');
+    }
+    return cfg;
+  };
+  var readText = function(){
     var raw = serialize();
     var lines = raw.split('\n');
     var cfg = { t: lines.length > 1 ? lines : lines[0], c: $('f-c').value.slice(1) };
@@ -378,6 +619,7 @@
   var confirmLeave = function(){ return !isDirty() || confirm('目前的修改還沒存檔，確定要離開嗎？\n（按「取消」可以回去存檔）'); };
 
   var refresh = function(){
+    if (state.kind === 'button') return refreshBtn();
     var cfg = readCfg();
     applyStyle(ed, cfg);
     stage.style.width = 'min(' + state.w + 'px, 100%)';
@@ -394,6 +636,46 @@
     $('out').value = base + '?id=' + cleanId();
     updateStatus();
   };
+  var refreshBtn = function(){
+    var cfg = readCfg(), id = cleanId();
+    stage.style.width = 'min(' + state.w + 'px, 100%)';
+    stage.style.height = state.h + 'px';
+    stage.style.justifyContent = 'center';
+    stage.style.padding = '0';
+    stage.style.background = '';
+    stage.classList.add('transparent');
+    var wrap = renderBtn($('btnhost'), cfg, { preview: true, id: id, onPreviewClick: function(){
+      toast(cfg.href ? '預覽模式：實際會在' + (cfg.target === '_top' ? '同一分頁' : '新分頁') + '開啟連結' : '還沒填連結網址');
+    } });
+    var need = Math.ceil(wrap.scrollHeight);
+    $('info').textContent = '模擬嵌入框：' + stage.clientWidth + ' × ' + state.h + ' px　｜　按鈕約需 ' + need + ' px 高' + (need > state.h ? '（目前太矮，會被裁切，請往下拉）' : '');
+    $('o-bfs').textContent = cfg.fs + 'px';
+    $('utm-fields').hidden = !cfg.utm;
+    $('trk-fields').hidden = !cfg.trk;
+    $('utm-preview').textContent = cfg.utm && /^https?:\/\//i.test(cfg.href) ? '實際連結：' + withUtm(cfg.href, cfg, id) : (cfg.utm ? '（填入 https 連結後會顯示加上 UTM 的實際網址）' : '');
+    var entry = {}; entry[id] = cfg;
+    $('json').value = JSON.stringify(entry, null, 2).replace(/^\{\n|\n\}$/g, '') + ',';
+    $('out').value = base + '?id=' + id;
+    updateStatus();
+  };
+
+  /* ---------- 類型切換 ---------- */
+  var setKind = function(k){
+    if (state.kind === k) return;
+    if (state.kind === 'text') state.hText = state.h; else state.hBtn = state.h;
+    state.kind = k;
+    state.h = k === 'button' ? state.hBtn : state.hText;
+    var b = k === 'button';
+    $('toolbar').style.display = b ? 'none' : '';
+    $('editor').style.display = b ? 'none' : '';
+    $('btnhost').style.display = b ? '' : 'none';
+    $('bform').hidden = !b;
+    $('tip-text').hidden = b; $('tip-btn').hidden = !b;
+    $('stagewrap').classList.toggle('solo', b);
+    document.querySelectorAll('[data-kind]').forEach(function(x){ x.classList.toggle('on', x.dataset.kind === k); });
+    refresh();
+  };
+  document.querySelectorAll('[data-kind]').forEach(function(x){ x.onclick = function(){ setKind(x.dataset.kind); }; });
 
   /* ---------- 存檔 ---------- */
   var saving = false;
@@ -401,7 +683,10 @@
     if (saving) return;
     var id = cleanId();
     var cfg = readCfg();
-    if (!serialize().trim()) { toast('沒有文字可以存檔'); return; }
+    if (cfg.kind === 'button') {
+      if (!cfg.label) { toast('請填按鈕文字'); $('b-label').focus(); return; }
+      if (!/^(https?:\/\/|tel:|mailto:)/i.test(cfg.href)) { toast('請填連結網址（https://、tel: 或 mailto: 開頭）'); $('b-href').focus(); return; }
+    } else if (!serialize().trim()) { toast('沒有文字可以存檔'); return; }
     saving = true; $('save').disabled = true; setStatus('busy', '存檔中…');
     var cancel = function(){ saving = false; $('save').disabled = false; updateStatus(); };
     fetchOne(id).then(function(r){ return r.ok; }, function(){ return false; }).then(function(exists){
@@ -512,6 +797,32 @@
 
   /* 工具列 */
   ['f-c','f-hc','f-w','f-s','f-lh','f-ls','f-bg','f-id'].forEach(function(id){ $(id).addEventListener('input', refresh); });
+
+  /* 按鈕表單 */
+  ['b-label','b-sub','b-href','b-target','b-done','b-bg','b-fg','b-r','b-fs','b-w','b-full','b-utm','b-camp','b-trk','b-ev','b-mev','b-lev'].forEach(function(id){
+    $(id).addEventListener($(id).type === 'checkbox' || $(id).tagName === 'SELECT' ? 'change' : 'input', refresh);
+  });
+  var segPick = function(groupId, attr, key){
+    document.querySelectorAll('#' + groupId + ' button').forEach(function(x){
+      x.onclick = function(){
+        document.querySelectorAll('#' + groupId + ' button').forEach(function(y){ y.classList.remove('on'); });
+        x.classList.add('on'); state[key] = x.getAttribute(attr); refresh();
+      };
+    });
+  };
+  var segSet = function(groupId, attr, val){
+    document.querySelectorAll('#' + groupId + ' button').forEach(function(y){ y.classList.toggle('on', y.getAttribute(attr) === (val || '')); });
+  };
+  segPick('b-variant', 'data-v', 'bv');
+  segPick('b-align', 'data-a', 'ba');
+  segPick('b-effect', 'data-fx', 'bfx');
+
+  /* 追蹤設定狀態 */
+  getJSON('api/config').then(function(res){
+    var t = (res.ok && res.data.track) || {};
+    var row = function(name, val, key){ return '<div><b>' + name + '</b>：' + (val ? '<span class="on">✓ ' + esc(val) + '</span>' : '<span class="off">未設定</span>（Cloudflare 變數 ' + key + '）') + '</div>'; };
+    $('trk-status').innerHTML = row('GA4', t.ga, 'GA4_ID') + row('Meta Pixel', t.meta, 'META_PIXEL_ID') + row('LINE Tag', t.line, 'LINE_TAG_ID');
+  }, function(){ $('trk-status').textContent = '讀取追蹤設定失敗'; });
   document.querySelectorAll('[data-align]').forEach(function(b){
     b.onclick = function(){
       document.querySelectorAll('[data-align]').forEach(function(x){ x.classList.remove('on'); });
@@ -541,7 +852,25 @@
   $('copy-url').onclick = function(){ copy($('out').value, this); };
 
   /* 載入既有 */
+  var fillBtn = function(k, c){
+    $('f-id').value = k;
+    $('b-label').value = c.label || ''; $('b-sub').value = c.sub || ''; $('b-href').value = c.href || '';
+    $('b-target').value = c.target || ''; $('b-done').value = c.done || '';
+    $('b-bg').value = hex(c.bg, '#2f6b55'); $('b-fg').value = hex(c.fg, '#ffffff');
+    $('b-r').value = String(c.r === undefined ? 999 : c.r); $('b-fs').value = c.fs || 17; $('b-w').value = String(c.w || 700);
+    $('b-full').checked = !!c.full;
+    state.bv = c.variant || ''; state.ba = c.a || ''; state.bfx = c.effect || '';
+    segSet('b-variant', 'data-v', state.bv); segSet('b-align', 'data-a', state.ba); segSet('b-effect', 'data-fx', state.bfx);
+    $('b-utm').checked = !!c.utm; $('b-camp').value = c.camp || '';
+    $('b-trk').checked = !!c.trk; $('b-ev').value = c.ev || ''; $('b-mev').value = c.mev || 'Lead'; $('b-lev').value = c.lev || '';
+    loadedId = k;
+    setKind('button');
+    refresh();
+    markClean();
+  };
   var fill = function(k, c){
+    if (c.kind === 'button') return fillBtn(k, c);
+    setKind('text');
     $('f-id').value = k;
     load(rawOf(c.t));
     $('f-c').value = hex(c.c, '#2f6b55'); $('f-hc').value = hex(c.hc, '#4a9a6e');

@@ -4,6 +4,8 @@
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
   "preview_urls": true,
+  // 保留在 Cloudflare 後台設定的變數（追蹤 ID），部署時不覆蓋
+  "keep_vars": true,
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
@@ -13,5 +15,7 @@
   "kv_namespaces": [
     { "binding": "PRESETS" }
   ]
-  // 編輯密碼 EDIT_PASSWORD 請在 Cloudflare 後台「設定 → 變數和密碼」以「密碼」類型新增
+  // Cloudflare 後台「設定 → 變數和密碼」：
+  //   EDIT_PASSWORD（勾選「秘密」）
+  //   GA4_ID（例 G-XXXXXXX）、META_PIXEL_ID（數字）、LINE_TAG_ID（LINE Tag 的 tagId）—— 選填，一般變數
 }

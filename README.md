@@ -1,6 +1,6 @@
 # notion-embeds-typestyle
 
-給 Notion 用的置中文字嵌入工具。Notion 原生不能置中文字，這個頁面用嵌入（`/embed`）的方式補上。
+給 Notion 用的嵌入小工具：**置中文字**與**按鈕**。Notion 原生做不到的排版與互動，用嵌入（`/embed`）的方式補上。
 
 ## 用法
 
@@ -20,6 +20,27 @@ https://notion-embeds-typestyle.nameless-wood-bba1.workers.dev/?id=title-01
 
 - `/?list`：文字庫總覽（預覽、搜尋、複製網址、編輯）——**需要查看密碼**，同一台瀏覽器輸入一次後會記住，可按「鎖定此瀏覽器」清除。
 - 編輯器的「從文字庫載入」下拉選單同樣需要查看密碼；從文字庫按「編輯」（`/?edit=代碼`）則不需要。
+
+### 按鈕
+
+編輯器上方切換「▶ 按鈕」：
+
+- 內容：按鈕文字、下方小字、連結（https / tel / mailto）、開啟方式、點擊後文字
+- 外觀：顏色、實心／外框／淡色、圓角、字級、字重、位置、滿版
+- 引導效果：光暈、放大、搖晃、閃光、彈跳（訪客開啟「減少動態效果」時自動關閉）
+- 點擊回饋：按下縮小、漣漪、文字變成「✓ 點擊後文字」約 2 秒
+- 自動 UTM：`utm_source=notion`、`utm_medium=embed_button`、`utm_campaign=活動名稱`、`utm_content=按鈕代碼`（不覆蓋連結原有的 UTM）
+- 追蹤事件：點擊時送出 GA4 事件（預設 `cta_click`，帶 `button_id`）、Meta Pixel（Lead／Contact／Schedule／自訂 ButtonClick，帶 `content_name`）、LINE Tag 轉換（預設 `Conversion`）。只送點擊事件，不送 PageView。
+
+追蹤 ID 在 Cloudflare 後台「設定 → 變數和密碼」以**一般變數**設定（`wrangler.jsonc` 已設 `keep_vars`，部署不會清掉）：
+
+| 變數 | 範例 |
+|---|---|
+| `GA4_ID` | `G-XXXXXXXXXX` |
+| `META_PIXEL_ID` | `123456789012345` |
+| `LINE_TAG_ID` | LINE Tag 的 tagId |
+
+**限制**：按鈕在 Notion 頁面中的 iframe 裡，屬第三方情境。點擊次數可靠；但 Safari 等會擋第三方 Cookie，且嵌入框讀不到 Notion 網址上的廣告參數（fbclid、gclid），因此不適合當廣告轉換歸因。歸因請在目的頁以 UTM 判讀。
 
 ### 權限
 
