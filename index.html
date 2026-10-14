@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>置中文字嵌入</title>
+<style>
+  :root{
+    --font:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:transparent}
+  body{font-family:var(--font);-webkit-font-smoothing:antialiased}
+
+  /* ===== 顯示模式 ===== */
+  #view{display:none;width:100%;height:100%;align-items:center;justify-content:center;overflow:hidden}
+  #text{white-space:pre;max-width:100%}
+  #text .hl{color:var(--hl)}
+
+  /* ===== 產生器模式 ===== */
+  #builder{display:none;max-width:720px;margin:0 auto;padding:24px 16px 48px;color:#222;background:#fff;min-height:100%}
+  #builder h1{font-size:20px;margin-bottom:4px}
+  #builder p.note{font-size:13px;color:#777;margin-bottom:20px;line-height:1.6}
+  .row{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;margin-bottom:12px}
+  .row label{font-size:14px;color:#555}
+  textarea,input[type=text],input[type=number],select{width:100%;font:inherit;font-size:15px;padding:8px 10px;border:1px solid #ddd;border-radius:8px}
+  textarea{min-height:90px;resize:vertical}
+  input[type=color]{width:48px;height:36px;border:none;background:none}
+  .preview{margin:20px 0 12px;border:1px dashed #ccc;border-radius:10px;overflow:hidden;background:#fff}
+  .preview iframe{display:block;width:100%;border:0}
+  .out{display:flex;gap:8px}
+  .out input{flex:1;font-size:13px;color:#333;background:#f7f7f5}
+  button{font:inherit;font-size:14px;padding:8px 16px;border:0;border-radius:8px;background:#2f6b55;color:#fff;cursor:pointer;white-space:nowrap}
+  .widths{display:flex;gap:6px;margin-top:8px}
+  .widths button{background:#eee;color:#333;padding:4px 10px;font-size:12px}
+  .widths button.on{background:#2f6b55;color:#fff}
+  @media (max-width:520px){.row{grid-template-columns:1fr;gap:4px}}
+</style>
+</head>
+<body>
+
+<div id="view"><div id="text"></div></div>
+
+<div id="builder">
+  <h1>置中文字嵌入產生器</h1>
+  <p class="note">每行一段文字；用 *星號* 包住的字會套「強調色」。產生網址後，在 Notion 輸入 /embed 貼上，再拉高度即可。字級會依嵌入框寬高自動縮放，手機不會爆版。</p>
+
+  <div class="row"><label>文字</label><textarea id="f-t">別再頭痛醫頭
+消耗時間、金錢了！</textarea></div>
+  <div class="row"><label>文字顏色</label><input type="color" id="f-c" value="#2f6b55"></div>
+  <div class="row"><label>強調色</label><input type="color" id="f-hc" value="#4a9a6e"></div>
+  <div class="row"><label>最大字級 px</label><input type="number" id="f-s" value="56" min="10" max="200"></div>
+  <div class="row"><label>字重</label>
+    <select id="f-w"><option value="400">一般 400</option><option value="500">中 500</option><option value="700" selected>粗 700</option><option value="900">特粗 900</option></select></div>
+  <div class="row"><label>行高</label><input type="number" id="f-lh" value="1.5" step="0.1" min="0.8" max="3"></div>
+  <div class="row"><label>字距 em</label><input type="number" id="f-ls" value="0.02" step="0.01" min="-0.1" max="0.5"></div>
+  <div class="row"><label>對齊</label>
+    <select id="f-a"><option value="center" selected>置中</option><option value="left">靠左</option><option value="right">靠右</option></select></div>
+  <div class="row"><label>背景</label>
+    <select id="f-bg"><option value="">透明</option><option value="ffffff">白</option><option value="e8f0ec">淺綠</option><option value="f7f6f3">米白</option></select></div>
+  <div class="row"><label>工具網址</label><input type="text" id="f-base" placeholder="部署後的網址，例如 https://xxx.pages.dev/"></div>
+
+  <div class="preview"><iframe id="pv" style="height:220px"></iframe></div>
+  <div class="widths" id="widths">
+    <button data-w="100%" class="on">桌機</button><button data-w="390px">手機 390</button><button data-w="320px">小手機 320</button>
+  </div>
+
+  <div class="row" style="margin-top:20px"><label>嵌入網址</label>
+    <div class="out"><input type="text" id="out" readonly><button id="copy">複製</button></div></div>
+</div>
+
+<script>
+(function(){
+  var q = new URLSearchParams(location.search);
+
+  /* ---------- 顯示模式 ---------- */
+  if (q.has('t')) {
+    var view = document.getElementById('view');
+    var el = document.getElementById('text');
+    var hex = function(v, d){ v = (v||'').replace('#',''); return /^[0-9a-fA-F]{3,8}$/.test(v) ? '#'+v : d; };
+    var esc = function(s){ return s.replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+
+    var raw = q.get('t').replace(/\|/g, '\n');
+    el.innerHTML = esc(raw).replace(/\*([^*\n]+)\*/g, '<span class="hl">$1</span>');
+
+    var maxSize = Math.min(Math.max(parseFloat(q.get('s')) || 48, 8), 240);
+    var align = ({left:'left',right:'right'})[q.get('a')] || 'center';
+    el.style.color = hex(q.get('c'), '#2f6b55');
+    el.style.setProperty('--hl', hex(q.get('hc'), '#4a9a6e'));
+    el.style.fontWeight = q.get('w') || '700';
+    el.style.lineHeight = q.get('lh') || '1.5';
+    el.style.letterSpacing = (parseFloat(q.get('ls')) || 0) + 'em';
+    el.style.textAlign = align;
+    view.style.justifyContent = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
+    view.style.padding = (q.get('p') || '8') + 'px';
+    if (q.get('bg')) document.body.style.background = hex(q.get('bg'), 'transparent');
+    view.style.display = 'flex';
+
+    /* 二分搜尋：找出不超出寬高的最大字級 */
+    var fit = function(){
+      var W = view.clientWidth - 2 * (parseFloat(view.style.padding) || 0);
+      var H = view.clientHeight - 2 * (parseFloat(view.style.padding) || 0);
+      var lo = 6, hi = maxSize;
+      el.style.fontSize = hi + 'px';
+      if (el.scrollWidth <= W && el.scrollHeight <= H) return;
+      for (var i = 0; i < 14; i++) {
+        var mid = (lo + hi) / 2;
+        el.style.fontSize = mid + 'px';
+        if (el.scrollWidth <= W && el.scrollHeight <= H) lo = mid; else hi = mid;
+      }
+      el.style.fontSize = lo + 'px';
+    };
+    var t; window.addEventListener('resize', function(){ clearTimeout(t); t = setTimeout(fit, 50); });
+    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(fit);
+    fit();
+    return;
+  }
+
+  /* ---------- 產生器模式 ---------- */
+  document.getElementById('builder').style.display = 'block';
+  var $ = function(id){ return document.getElementById(id); };
+  var here = location.href.split('?')[0].split('#')[0];
+  if (/^https?:/.test(here)) $('f-base').value = here;
+
+  var build = function(base){
+    var p = new URLSearchParams();
+    p.set('t', $('f-t').value.replace(/\n/g, '|'));
+    p.set('c', $('f-c').value.slice(1));
+    if ($('f-t').value.indexOf('*') > -1) p.set('hc', $('f-hc').value.slice(1));
+    p.set('s', $('f-s').value);
+    p.set('w', $('f-w').value);
+    if ($('f-lh').value !== '1.5') p.set('lh', $('f-lh').value);
+    if (parseFloat($('f-ls').value)) p.set('ls', $('f-ls').value);
+    if ($('f-a').value !== 'center') p.set('a', $('f-a').value);
+    if ($('f-bg').value) p.set('bg', $('f-bg').value);
+    return base + '?' + p.toString();
+  };
+  var update = function(){
+    $('out').value = build($('f-base').value.trim() || '（請先填入部署後的工具網址）');
+    $('pv').src = build(here);
+  };
+  document.querySelectorAll('#builder input, #builder select, #builder textarea').forEach(function(n){ n.addEventListener('input', update); });
+  $('copy').onclick = function(){
+    $('out').select();
+    (navigator.clipboard ? navigator.clipboard.writeText($('out').value) : Promise.reject()).catch(function(){ document.execCommand('copy'); });
+    $('copy').textContent = '已複製'; setTimeout(function(){ $('copy').textContent = '複製'; }, 1200);
+  };
+  document.querySelectorAll('#widths button').forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll('#widths button').forEach(function(x){ x.classList.remove('on'); });
+      b.classList.add('on'); $('pv').style.width = b.dataset.w; $('pv').style.margin = '0 auto';
+    };
+  });
+  update();
+})();
+</script>
+</body>
+</html>
