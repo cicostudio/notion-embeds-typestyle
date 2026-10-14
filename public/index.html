@@ -50,6 +50,17 @@
   .idbar #f-id{width:170px;font-family:ui-monospace,Menlo,Consolas,monospace}
   .idbar select{flex:1;min-width:180px}
 
+  .status{font-size:13px;padding:4px 10px;border-radius:999px;white-space:nowrap}
+  .status.saved{color:var(--brand);background:var(--brand-soft)}
+  .status.dirty{color:#a15c00;background:#fff1dc}
+  .status.dirty::before{content:"● "}
+  .status.busy{color:#555;background:#eee}
+  .status.err{color:#b42318;background:#fde8e6}
+  #save[disabled]{opacity:.5;cursor:default}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;font-size:14px;padding:10px 18px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:20;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  details.adv{margin-top:24px;border-top:1px solid var(--line);padding-top:12px}
+  details.adv summary{cursor:pointer;font-size:14px;color:#555}
   .toolbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:12px 12px 0 0;background:#fafaf8}
   .tb-group{display:flex;align-items:center;gap:4px;padding:0 6px;border-right:1px solid var(--line)}
   .tb-group:last-child{border-right:0}
@@ -89,7 +100,7 @@
 <div id="list" class="panel">
   <div class="tabs"><a href="./">編輯器</a><a href="./?list" class="on">文字庫</a></div>
   <h1>文字庫</h1>
-  <p class="note">以下是 <code>presets.json</code> 裡所有已存檔的文字。按「複製網址」後，在 Notion 輸入 /embed 貼上即可；按「編輯」會在編輯器中打開。</p>
+  <p class="note">以下是所有已存檔的文字。按「複製網址」後，在 Notion 輸入 /embed 貼上即可；按「編輯」會在編輯器中打開。剛存檔的內容最多約 1 分鐘後出現在這裡。</p>
   <input type="text" id="search" placeholder="搜尋代碼或文字…">
   <div id="cards"></div>
 </div>
@@ -104,6 +115,8 @@
     <label for="f-id">代碼</label>
     <input type="text" id="f-id" value="new-01" placeholder="例如 hero-sub">
     <select id="f-load"><option value="">從文字庫載入…</option></select>
+    <span id="status" class="status saved">已存檔</span>
+    <button id="save" title="存檔（Ctrl/⌘ + S）">💾 存檔</button>
   </div>
 
   <div class="toolbar" id="toolbar">
@@ -149,19 +162,23 @@
   </div>
   <p class="tip">直接在框裡打字，Enter 換行。選取文字後按「強調」套用強調色，再按一次取消。拖曳框的下緣可以模擬 Notion 嵌入框高度，字級會自動縮放，和實際嵌入後一樣。</p>
 
-  <div class="outputs">
-    <div>
-      <h2>① 存檔用 JSON（貼進 presets.json）</h2>
-      <textarea id="json" readonly></textarea>
-      <div class="actions"><button id="copy-json">複製 JSON</button></div>
-    </div>
-    <div>
-      <h2>② 嵌入網址（存檔並部署後生效）</h2>
-      <div class="url"><input type="text" id="out" readonly><button id="copy-url">複製</button></div>
-      <p class="tip">新增：把 JSON 貼進 <code>public/presets.json</code> 最後一筆之前並 commit。<br>修改：取代 presets.json 中同代碼那一段。<br>部署約一分鐘後，Notion 上的嵌入會自動更新。</p>
-    </div>
+  <h2>嵌入網址</h2>
+  <div class="outputs" style="grid-template-columns:1fr">
+    <div class="url"><input type="text" id="out" readonly><button id="copy-url">複製</button></div>
   </div>
+  <p class="tip">存檔後，在 Notion 輸入 /embed 貼上這個網址。之後修改同一個代碼並存檔，Notion 上的嵌入約 1 分鐘內自動更新，不用重貼。</p>
+
+  <details class="adv">
+    <summary>進階：這筆設定的 JSON（備份用）</summary>
+    <div class="outputs" style="grid-template-columns:1fr">
+      <div>
+        <textarea id="json" readonly></textarea>
+        <div class="actions"><button id="copy-json" class="ghost">複製 JSON</button></div>
+      </div>
+    </div>
+  </details>
 </div>
+<div id="toast" class="toast"></div>
 
 <script>
 (function(){
@@ -173,7 +190,8 @@
   var toHTML = function(raw){ return esc(raw).replace(/\*([^*\n]+)\*/g, '<span class="hl">$1</span>'); };
   var rawOf = function(t){ return Array.isArray(t) ? t.join('\n') : String(t || '').replace(/\|/g, '\n'); };
   var loadPresets = function(){
-    return fetch('presets.json', {cache:'no-cache'}).then(function(r){ if (!r.ok) throw 0; return r.json(); });
+    var get = function(u){ return fetch(u, {cache:'no-store'}).then(function(r){ if (!r.ok) throw 0; return r.json(); }); };
+    return get('api/presets').catch(function(){ return get('presets.json'); });
   };
   var copy = function(text, btn){
     var done = function(){ var o = btn.textContent; btn.textContent = '已複製'; setTimeout(function(){ btn.textContent = o; }, 1200); };
@@ -305,6 +323,22 @@
   };
   var cleanId = function(){ return $('f-id').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'untitled'; };
 
+  /* ---------- 存檔狀態 ---------- */
+  var presets = {};          // 文字庫目前內容
+  var savedSnap = null;      // 最後一次存檔／載入時的狀態
+  var loadedId = null;       // 目前編輯中的代碼是從文字庫載入的哪一筆
+  var snap = function(){ return cleanId() + '\u0000' + JSON.stringify(readCfg()); };
+  var isDirty = function(){ return savedSnap !== null && snap() !== savedSnap; };
+  var setStatus = function(kind, text){ var s = $('status'); s.className = 'status ' + kind; s.textContent = text; };
+  var markClean = function(){ savedSnap = snap(); setStatus('saved', '已存檔'); };
+  var updateStatus = function(){
+    if (savedSnap === null) return;
+    if (isDirty()) setStatus('dirty', loadedId ? '有未存檔的修改' : '尚未存檔');
+    else setStatus('saved', '已存檔');
+  };
+  var toast = function(m){ var t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(function(){ t.classList.remove('show'); }, 2200); };
+  var confirmLeave = function(){ return !isDirty() || confirm('目前的修改還沒存檔，確定要離開嗎？\n（按「取消」可以回去存檔）'); };
+
   var refresh = function(){
     var cfg = readCfg();
     applyStyle(ed, cfg);
@@ -320,7 +354,66 @@
     var entry = {}; entry[cleanId()] = cfg;
     $('json').value = JSON.stringify(entry, null, 2).replace(/^\{\n|\n\}$/g, '') + ',';
     $('out').value = base + '?id=' + cleanId();
+    updateStatus();
   };
+
+  /* ---------- 存檔 ---------- */
+  var PW_KEY = 'nets-edit-pw';
+  var getPw = function(){ try { return localStorage.getItem(PW_KEY) || ''; } catch(e){ return ''; } };
+  var setPw = function(v){ try { v ? localStorage.setItem(PW_KEY, v) : localStorage.removeItem(PW_KEY); } catch(e){} };
+  var askPw = function(msg){
+    var v = prompt(msg || '請輸入編輯密碼（這台瀏覽器之後會記住）');
+    if (v) setPw(v);
+    return v || '';
+  };
+
+  var save = function(){
+    var id = cleanId();
+    var cfg = readCfg();
+    if (!serialize().trim()) { toast('沒有文字可以存檔'); return; }
+    if (presets[id] && id !== loadedId &&
+        !confirm('代碼「' + id + '」已經存在，存檔會覆蓋原本的內容。\n已嵌入這個代碼的 Notion 頁面也會跟著改變。確定要覆蓋嗎？')) return;
+    var pw = getPw() || askPw();
+    if (!pw) return;
+    $('save').disabled = true; setStatus('busy', '存檔中…');
+    fetch('api/presets/' + encodeURIComponent(id), {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-password': pw },
+      body: JSON.stringify(cfg)
+    }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(d){ return { r: r, d: d }; });
+    }).then(function(res){
+      $('save').disabled = false;
+      if (res.r.ok) {
+        presets[id] = cfg;
+        if (!Array.from($('f-load').options).some(function(o){ return o.value === id; })) {
+          var o = document.createElement('option'); o.value = id; o.textContent = id; $('f-load').appendChild(o);
+        }
+        $('f-id').value = id; loadedId = id; $('f-load').value = id;
+        $('count').textContent = '（' + Object.keys(presets).length + ' 筆）';
+        markClean();
+        toast('已存檔「' + id + '」，Notion 上的嵌入約 1 分鐘內更新');
+        return;
+      }
+      updateStatus();
+      if (res.d.error === 'wrong-password') { setPw(''); if (askPw('密碼錯誤，請重新輸入編輯密碼')) save(); }
+      else if (res.d.error === 'no-password-set') { setStatus('err', '尚未設定編輯密碼'); alert('伺服器還沒設定編輯密碼。\n請到 Cloudflare 後台此 Worker 的「設定 → 變數和密碼」新增密碼 EDIT_PASSWORD。'); }
+      else if (res.d.error === 'bad-id') { alert('代碼只能使用英文小寫、數字和連字號，最長 48 字。'); }
+      else { setStatus('err', '存檔失敗'); alert('存檔失敗（' + (res.d.error || res.r.status) + '），請稍後再試。'); }
+    }).catch(function(){
+      $('save').disabled = false; setStatus('err', '存檔失敗'); alert('連線失敗，請檢查網路後再試一次。');
+    });
+  };
+  $('save').onclick = save;
+  document.addEventListener('keydown', function(e){
+    if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) { e.preventDefault(); save(); }
+  });
+
+  /* ---------- 未存檔警告 ---------- */
+  window.addEventListener('beforeunload', function(e){ if (isDirty()) { e.preventDefault(); e.returnValue = ''; } });
+  document.querySelectorAll('#builder a[href]').forEach(function(a){
+    a.addEventListener('click', function(e){ if (!confirmLeave()) e.preventDefault(); else savedSnap = null; });
+  });
 
   /* 輸入行為：Enter 換行、貼上只取純文字 */
   ed.addEventListener('keydown', function(e){
@@ -406,19 +499,29 @@
     $('f-lh').value = c.lh || 1.5; $('f-ls').value = c.ls || 0; $('f-bg').value = c.bg || '';
     state.a = c.a || 'center';
     document.querySelectorAll('[data-align]').forEach(function(x){ x.classList.toggle('on', x.dataset.align === state.a); });
+    loadedId = k;
     refresh();
+    markClean();
   };
   load('別再頭痛醫頭\n消耗時間、金錢了！');
   refresh();
+  savedSnap = snap(); setStatus('saved', '新文字');
   (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(refresh);
 
+  var prevLoad = '';
   loadPresets().then(function(p){
+    presets = p;
     $('count').textContent = '（' + Object.keys(p).length + ' 筆）';
     Object.keys(p).forEach(function(k){ var o = document.createElement('option'); o.value = k; o.textContent = k; $('f-load').appendChild(o); });
-    $('f-load').onchange = function(){ if (p[this.value]) fill(this.value, p[this.value]); };
+    $('f-load').onchange = function(){
+      var v = this.value;
+      if (!presets[v]) return;
+      if (!confirmLeave()) { this.value = prevLoad; return; }
+      prevLoad = v; fill(v, presets[v]);
+    };
     var e = q.get('edit');
-    if (e && p[e]) { $('f-load').value = e; fill(e, p[e]); }
-  }).catch(function(){});
+    if (e && p[e]) { $('f-load').value = e; prevLoad = e; fill(e, p[e]); }
+  }).catch(function(){ setStatus('err', '文字庫讀取失敗'); });
 })();
 </script>
 </body>

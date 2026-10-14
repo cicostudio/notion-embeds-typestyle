@@ -1,9 +1,17 @@
 {
   "name": "notion-embeds-typestyle",
+  "main": "src/worker.js",
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
   "preview_urls": true,
   "assets": {
-    "directory": "./public"
-  }
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  // 文字庫資料庫：部署時由 Cloudflare 自動建立
+  "kv_namespaces": [
+    { "binding": "PRESETS" }
+  ]
+  // 編輯密碼 EDIT_PASSWORD 請在 Cloudflare 後台「設定 → 變數和密碼」以「密碼」類型新增
 }
