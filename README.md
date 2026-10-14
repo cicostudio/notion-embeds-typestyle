@@ -27,14 +27,17 @@
 
 範例：`?t=別再頭痛醫頭|消耗時間、金錢了！&c=2f6b55&s=56&w=700`
 
-## 部署（Cloudflare Pages）
+## 部署（Cloudflare Workers）
 
-Workers & Pages → 建立 → Pages → 連接到 Git，選擇此 repo，建置設定如下：
+Workers & Pages → 建立 → 匯入 Git 存放庫，選擇此 repo，欄位如下：
 
-| 欄位（英文介面） | 中文意思 | 填寫 |
-|---|---|---|
-| Framework preset | 框架預設 | `None`（無） |
-| Build command | 建置指令 | 留空 |
-| Build output directory | 建置輸出目錄 | `/` |
+| 欄位 | 填寫 |
+|---|---|
+| 專案名稱 | `notion-embeds-typestyle`（需與 `wrangler.jsonc` 的 `name` 相同） |
+| 組建命令 | 留空 |
+| 部署命令 | `npx wrangler deploy`（預設值） |
+| 預覽指令 | 留空 |
+| 路徑 | `/` |
+| 變數名稱／變數值 | 留空 |
 
-純靜態 HTML，不需要建置；之後推送到 `main` 會自動重新部署。
+網頁檔放在 `public/`，`wrangler.jsonc` 指定它為靜態資產目錄；之後推送到 `main` 會自動重新部署。
