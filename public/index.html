@@ -16,35 +16,61 @@
   #view{display:none;width:100%;height:100%;align-items:center;justify-content:center;overflow:hidden}
   #text{white-space:pre;max-width:100%}
   #text .hl{color:var(--hl)}
+  #msg{display:none;padding:12px;font-size:13px;color:#999;text-align:center}
 
-  /* ===== 產生器模式 ===== */
-  #builder{display:none;max-width:720px;margin:0 auto;padding:24px 16px 48px;color:#222;background:#fff;min-height:100%}
-  #builder h1{font-size:20px;margin-bottom:4px}
-  #builder p.note{font-size:13px;color:#777;margin-bottom:20px;line-height:1.6}
+  /* ===== 產生器／列表模式 ===== */
+  .panel{display:none;max-width:760px;margin:0 auto;padding:24px 16px 48px;color:#222;background:#fff;min-height:100%}
+  .panel h1{font-size:20px;margin-bottom:4px}
+  .panel h2{font-size:15px;margin:28px 0 10px}
+  .panel p.note{font-size:13px;color:#777;margin-bottom:20px;line-height:1.7}
+  .panel code{background:#f2f1ee;padding:1px 5px;border-radius:4px;font-size:12px}
   .row{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;margin-bottom:12px}
   .row label{font-size:14px;color:#555}
-  textarea,input[type=text],input[type=number],select{width:100%;font:inherit;font-size:15px;padding:8px 10px;border:1px solid #ddd;border-radius:8px}
+  textarea,input[type=text],input[type=number],select{width:100%;font:inherit;font-size:15px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fff}
   textarea{min-height:90px;resize:vertical}
+  textarea.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;min-height:150px;background:#f7f7f5}
   input[type=color]{width:48px;height:36px;border:none;background:none}
   .preview{margin:20px 0 12px;border:1px dashed #ccc;border-radius:10px;overflow:hidden;background:#fff}
-  .preview iframe{display:block;width:100%;border:0}
+  .preview iframe{display:block;width:100%;border:0;margin:0 auto}
   .out{display:flex;gap:8px}
   .out input{flex:1;font-size:13px;color:#333;background:#f7f7f5}
   button{font:inherit;font-size:14px;padding:8px 16px;border:0;border-radius:8px;background:#2f6b55;color:#fff;cursor:pointer;white-space:nowrap}
+  button.ghost{background:#eee;color:#333}
   .widths{display:flex;gap:6px;margin-top:8px}
   .widths button{background:#eee;color:#333;padding:4px 10px;font-size:12px}
   .widths button.on{background:#2f6b55;color:#fff}
+  .tabs{display:flex;gap:8px;margin-bottom:20px}
+  .tabs a{font-size:14px;color:#2f6b55;text-decoration:none;padding:6px 12px;border:1px solid #2f6b55;border-radius:999px}
+  .tabs a.on{background:#2f6b55;color:#fff}
+  .card{border:1px solid #e6e6e6;border-radius:10px;margin-bottom:16px;overflow:hidden}
+  .card iframe{display:block;width:100%;height:140px;border:0;background:#fff}
+  .card .meta{display:flex;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid #eee;background:#fafaf8}
+  .card .meta b{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}
+  .card .meta button{padding:5px 10px;font-size:12px}
   @media (max-width:520px){.row{grid-template-columns:1fr;gap:4px}}
 </style>
 </head>
 <body>
 
 <div id="view"><div id="text"></div></div>
+<div id="msg"></div>
 
-<div id="builder">
+<!-- ===== 文字庫列表 ===== -->
+<div id="list" class="panel">
+  <div class="tabs"><a href="./" >產生器</a><a href="./?list" class="on">文字庫</a></div>
+  <h1>文字庫</h1>
+  <p class="note">以下是 <code>presets.json</code> 裡所有已存檔的文字。按「複製網址」後，在 Notion 輸入 /embed 貼上即可。修改文字只要改 presets.json，已嵌入的頁面會自動更新。</p>
+  <div id="cards"></div>
+</div>
+
+<!-- ===== 產生器 ===== -->
+<div id="builder" class="panel">
+  <div class="tabs"><a href="./" class="on">產生器</a><a href="./?list">文字庫</a></div>
   <h1>置中文字嵌入產生器</h1>
-  <p class="note">每行一段文字；用 *星號* 包住的字會套「強調色」。產生網址後，在 Notion 輸入 /embed 貼上，再拉高度即可。字級會依嵌入框寬高自動縮放，手機不會爆版。</p>
+  <p class="note">每行一段文字；用 *星號* 包住的字會套「強調色」。設定好後，把下方「存檔用 JSON」加進 <code>presets.json</code>，嵌入網址就是 <code>?id=代碼</code>。字級會依嵌入框寬高自動縮放，手機不會爆版。</p>
 
+  <div class="row"><label>代碼</label><input type="text" id="f-id" value="title-01" placeholder="英文小寫、數字、連字號，例如 hero-sub"></div>
+  <div class="row"><label>載入既有</label><select id="f-load"><option value="">（從文字庫載入來修改）</option></select></div>
   <div class="row"><label>文字</label><textarea id="f-t">別再頭痛醫頭
 消耗時間、金錢了！</textarea></div>
   <div class="row"><label>文字顏色</label><input type="color" id="f-c" value="#2f6b55"></div>
@@ -58,48 +84,64 @@
     <select id="f-a"><option value="center" selected>置中</option><option value="left">靠左</option><option value="right">靠右</option></select></div>
   <div class="row"><label>背景</label>
     <select id="f-bg"><option value="">透明</option><option value="ffffff">白</option><option value="e8f0ec">淺綠</option><option value="f7f6f3">米白</option></select></div>
-  <div class="row"><label>工具網址</label><input type="text" id="f-base" placeholder="部署後的網址，例如 https://xxx.pages.dev/"></div>
 
   <div class="preview"><iframe id="pv" style="height:220px"></iframe></div>
   <div class="widths" id="widths">
     <button data-w="100%" class="on">桌機</button><button data-w="390px">手機 390</button><button data-w="320px">小手機 320</button>
   </div>
 
-  <div class="row" style="margin-top:20px"><label>嵌入網址</label>
-    <div class="out"><input type="text" id="out" readonly><button id="copy">複製</button></div></div>
+  <h2>① 存檔用 JSON（貼進 presets.json）</h2>
+  <textarea id="json" class="code" readonly></textarea>
+  <div style="margin-top:8px"><button id="copy-json">複製 JSON</button></div>
+
+  <h2>② 嵌入網址（存檔並部署後才有效）</h2>
+  <div class="out"><input type="text" id="out" readonly><button id="copy-url">複製</button></div>
 </div>
 
 <script>
 (function(){
   var q = new URLSearchParams(location.search);
+  var base = location.href.split('?')[0].split('#')[0];
+  var $ = function(id){ return document.getElementById(id); };
+  var hex = function(v, d){ v = String(v||'').replace('#',''); return /^[0-9a-fA-F]{3,8}$/.test(v) ? '#'+v : d; };
+  var esc = function(s){ return s.replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+  var loadPresets = function(){
+    return fetch('presets.json', {cache:'no-cache'}).then(function(r){
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  };
+  var copy = function(text, btn){
+    var done = function(){ var o = btn.textContent; btn.textContent = '已複製'; setTimeout(function(){ btn.textContent = o; }, 1200); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function(){ fallback(); });
+    else fallback();
+    function fallback(){ var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done(); }
+  };
+  var showMsg = function(m){ $('msg').textContent = m; $('msg').style.display = 'block'; };
 
-  /* ---------- 顯示模式 ---------- */
-  if (q.has('t')) {
-    var view = document.getElementById('view');
-    var el = document.getElementById('text');
-    var hex = function(v, d){ v = (v||'').replace('#',''); return /^[0-9a-fA-F]{3,8}$/.test(v) ? '#'+v : d; };
-    var esc = function(s){ return s.replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
-
-    var raw = q.get('t').replace(/\|/g, '\n');
+  /* ---------- 顯示：cfg = {t, c, hc, s, w, lh, ls, a, bg, p} ---------- */
+  var render = function(cfg){
+    var view = $('view'), el = $('text');
+    var raw = Array.isArray(cfg.t) ? cfg.t.join('\n') : String(cfg.t || '').replace(/\|/g, '\n');
     el.innerHTML = esc(raw).replace(/\*([^*\n]+)\*/g, '<span class="hl">$1</span>');
 
-    var maxSize = Math.min(Math.max(parseFloat(q.get('s')) || 48, 8), 240);
-    var align = ({left:'left',right:'right'})[q.get('a')] || 'center';
-    el.style.color = hex(q.get('c'), '#2f6b55');
-    el.style.setProperty('--hl', hex(q.get('hc'), '#4a9a6e'));
-    el.style.fontWeight = q.get('w') || '700';
-    el.style.lineHeight = q.get('lh') || '1.5';
-    el.style.letterSpacing = (parseFloat(q.get('ls')) || 0) + 'em';
+    var maxSize = Math.min(Math.max(parseFloat(cfg.s) || 48, 8), 240);
+    var align = ({left:'left',right:'right'})[cfg.a] || 'center';
+    var pad = parseFloat(cfg.p); if (isNaN(pad)) pad = 8;
+    el.style.color = hex(cfg.c, '#2f6b55');
+    el.style.setProperty('--hl', hex(cfg.hc, '#4a9a6e'));
+    el.style.fontWeight = cfg.w || '700';
+    el.style.lineHeight = cfg.lh || '1.5';
+    el.style.letterSpacing = (parseFloat(cfg.ls) || 0) + 'em';
     el.style.textAlign = align;
     view.style.justifyContent = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
-    view.style.padding = (q.get('p') || '8') + 'px';
-    if (q.get('bg')) document.body.style.background = hex(q.get('bg'), 'transparent');
+    view.style.padding = pad + 'px';
+    if (cfg.bg) document.body.style.background = hex(cfg.bg, 'transparent');
     view.style.display = 'flex';
 
     /* 二分搜尋：找出不超出寬高的最大字級 */
     var fit = function(){
-      var W = view.clientWidth - 2 * (parseFloat(view.style.padding) || 0);
-      var H = view.clientHeight - 2 * (parseFloat(view.style.padding) || 0);
+      var W = view.clientWidth - 2 * pad, H = view.clientHeight - 2 * pad;
       var lo = 6, hi = maxSize;
       el.style.fontSize = hi + 'px';
       if (el.scrollWidth <= W && el.scrollHeight <= H) return;
@@ -113,42 +155,105 @@
     var t; window.addEventListener('resize', function(){ clearTimeout(t); t = setTimeout(fit, 50); });
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(fit);
     fit();
+  };
+
+  /* ---------- 模式 1：?id=代碼（從文字庫讀取） ---------- */
+  if (q.has('id')) {
+    var id = q.get('id');
+    loadPresets().then(function(p){
+      if (p[id]) render(p[id]);
+      else showMsg('找不到代碼「' + id + '」，請確認 presets.json');
+    }).catch(function(){ showMsg('文字庫讀取失敗'); });
     return;
   }
 
-  /* ---------- 產生器模式 ---------- */
-  document.getElementById('builder').style.display = 'block';
-  var $ = function(id){ return document.getElementById(id); };
-  var here = location.href.split('?')[0].split('#')[0];
-  if (/^https?:/.test(here)) $('f-base').value = here;
+  /* ---------- 模式 2：?t=文字（直接帶參數，舊用法仍可用） ---------- */
+  if (q.has('t')) {
+    var cfg = {}; q.forEach(function(v, k){ cfg[k] = v; });
+    render(cfg);
+    return;
+  }
 
-  var build = function(base){
-    var p = new URLSearchParams();
-    p.set('t', $('f-t').value.replace(/\n/g, '|'));
-    p.set('c', $('f-c').value.slice(1));
-    if ($('f-t').value.indexOf('*') > -1) p.set('hc', $('f-hc').value.slice(1));
-    p.set('s', $('f-s').value);
-    p.set('w', $('f-w').value);
-    if ($('f-lh').value !== '1.5') p.set('lh', $('f-lh').value);
-    if (parseFloat($('f-ls').value)) p.set('ls', $('f-ls').value);
-    if ($('f-a').value !== 'center') p.set('a', $('f-a').value);
-    if ($('f-bg').value) p.set('bg', $('f-bg').value);
-    return base + '?' + p.toString();
+  /* ---------- 模式 3：?list 文字庫列表 ---------- */
+  if (q.has('list')) {
+    $('list').style.display = 'block';
+    loadPresets().then(function(p){
+      var keys = Object.keys(p);
+      if (!keys.length) { $('cards').innerHTML = '<p class="note">文字庫目前是空的。</p>'; return; }
+      keys.forEach(function(k){
+        var url = base + '?id=' + encodeURIComponent(k);
+        var card = document.createElement('div'); card.className = 'card';
+        card.innerHTML = '<iframe loading="lazy"></iframe><div class="meta"><b></b><button class="ghost" data-act="edit">編輯</button><button data-act="copy">複製網址</button></div>';
+        card.querySelector('iframe').src = url;
+        card.querySelector('b').textContent = k;
+        card.querySelector('[data-act=copy]').onclick = function(){ copy(url, this); };
+        card.querySelector('[data-act=edit]').onclick = function(){ location.href = base + '?edit=' + encodeURIComponent(k); };
+        $('cards').appendChild(card);
+      });
+    }).catch(function(){ $('cards').innerHTML = '<p class="note">文字庫讀取失敗。</p>'; });
+    return;
+  }
+
+  /* ---------- 模式 4：產生器 ---------- */
+  $('builder').style.display = 'block';
+  var fields = ['t','c','hc','s','w','lh','ls','a','bg'];
+  var DEF = {c:'2f6b55', hc:'4a9a6e', s:'48', w:'700', lh:'1.5', ls:'0', a:'center', bg:''};
+
+  var read = function(){
+    var cfg = {};
+    var lines = $('f-t').value.replace(/\s+$/, '').split('\n');
+    cfg.t = lines.length > 1 ? lines : lines[0];
+    cfg.c = $('f-c').value.slice(1);
+    if ($('f-t').value.indexOf('*') > -1) cfg.hc = $('f-hc').value.slice(1);
+    cfg.s = Number($('f-s').value);
+    cfg.w = Number($('f-w').value);
+    if ($('f-lh').value !== '1.5') cfg.lh = Number($('f-lh').value);
+    if (parseFloat($('f-ls').value)) cfg.ls = Number($('f-ls').value);
+    if ($('f-a').value !== 'center') cfg.a = $('f-a').value;
+    if ($('f-bg').value) cfg.bg = $('f-bg').value;
+    return cfg;
   };
+  var write = function(cfg){
+    $('f-t').value = Array.isArray(cfg.t) ? cfg.t.join('\n') : String(cfg.t || '');
+    $('f-c').value = '#' + (cfg.c || DEF.c);
+    $('f-hc').value = '#' + (cfg.hc || DEF.hc);
+    $('f-s').value = cfg.s || DEF.s;
+    $('f-w').value = String(cfg.w || DEF.w);
+    $('f-lh').value = cfg.lh || DEF.lh;
+    $('f-ls').value = cfg.ls || DEF.ls;
+    $('f-a').value = cfg.a || DEF.a;
+    $('f-bg').value = cfg.bg || DEF.bg;
+  };
+  var cleanId = function(){ return $('f-id').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'untitled'; };
+
   var update = function(){
-    $('out').value = build($('f-base').value.trim() || '（請先填入部署後的工具網址）');
-    $('pv').src = build(here);
+    var cfg = read(), id = cleanId();
+    var entry = {}; entry[id] = cfg;
+    $('json').value = JSON.stringify(entry, null, 2).replace(/^\{\n|\n\}$/g, '') + ',';
+    $('out').value = base + '?id=' + id;
+    var p = new URLSearchParams();
+    Object.keys(cfg).forEach(function(k){ p.set(k, Array.isArray(cfg[k]) ? cfg[k].join('|') : cfg[k]); });
+    $('pv').src = base + '?' + p.toString();
   };
-  document.querySelectorAll('#builder input, #builder select, #builder textarea').forEach(function(n){ n.addEventListener('input', update); });
-  $('copy').onclick = function(){
-    $('out').select();
-    (navigator.clipboard ? navigator.clipboard.writeText($('out').value) : Promise.reject()).catch(function(){ document.execCommand('copy'); });
-    $('copy').textContent = '已複製'; setTimeout(function(){ $('copy').textContent = '複製'; }, 1200);
-  };
+
+  loadPresets().then(function(p){
+    Object.keys(p).forEach(function(k){
+      var o = document.createElement('option'); o.value = k; o.textContent = k; $('f-load').appendChild(o);
+    });
+    $('f-load').onchange = function(){ if (p[this.value]) { $('f-id').value = this.value; write(p[this.value]); update(); } };
+    var e = q.get('edit');
+    if (e && p[e]) { $('f-id').value = e; $('f-load').value = e; write(p[e]); update(); }
+  }).catch(function(){});
+
+  document.querySelectorAll('#builder input, #builder select, #builder textarea').forEach(function(n){
+    if (n.id !== 'f-load') n.addEventListener('input', update);
+  });
+  $('copy-json').onclick = function(){ copy($('json').value, this); };
+  $('copy-url').onclick = function(){ copy($('out').value, this); };
   document.querySelectorAll('#widths button').forEach(function(b){
     b.onclick = function(){
       document.querySelectorAll('#widths button').forEach(function(x){ x.classList.remove('on'); });
-      b.classList.add('on'); $('pv').style.width = b.dataset.w; $('pv').style.margin = '0 auto';
+      b.classList.add('on'); $('pv').style.width = b.dataset.w;
     };
   });
   update();
