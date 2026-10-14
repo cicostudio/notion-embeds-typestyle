@@ -29,4 +29,12 @@
 
 ## 部署（Cloudflare Pages）
 
-匯入此 repo，Framework 選 None，Build command 留空，Build output directory 填 `/`。
+Workers & Pages → 建立 → Pages → 連接到 Git，選擇此 repo，建置設定如下：
+
+| 欄位（英文介面） | 中文意思 | 填寫 |
+|---|---|---|
+| Framework preset | 框架預設 | `None`（無） |
+| Build command | 建置指令 | 留空 |
+| Build output directory | 建置輸出目錄 | `/` |
+
+純靜態 HTML，不需要建置；之後推送到 `main` 會自動重新部署。
